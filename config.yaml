@@ -1,3 +1,5 @@
-period: ''
+period: e.g. 1d, 5d, 1mo, 1yr
 tickers:
-- ''
+- AAPL
+- MSFT
+- TSLA

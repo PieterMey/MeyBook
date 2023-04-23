@@ -22,11 +22,13 @@ class StockClosePricesApp:
         self.create_ticker_list_widget()
         self.configure_app_sizes()
 
-        # Initialize the global variable for error message
-        self.error_box=None
+        # Initialize the global variable for info message
+        self.info_box=None
 
         # Initialize the global variable for storing close prices data
         self.close_prices = None
+        self.entry_tickers = None
+        self.entry_period = None
 
         # Load previous output
         load_output(self.output)
@@ -80,55 +82,55 @@ class StockClosePricesApp:
         self.master.grid_columnconfigure(0, weight=1)
         self.master.grid_columnconfigure(1, weight=1)
     
-    def create_error_box(self, error_message):
-        if self.error_box is None:
-            # Create a new Toplevel widget for the error box
-            self.error_box = tk.Toplevel(self.master)
-            self.error_box.overrideredirect(True)
-            self.error_box.geometry("200x50+{0}+{1}".format(self.master.winfo_x(), self.master.winfo_y() + self.master.winfo_height()))
-            self.error_box.bind("<Button-1>", self.move_error_box)
+    def create_info_box(self, info_message):
+        if self.info_box is None:
+            # Create a new Toplevel widget for the info box
+            self.info_box = tk.Toplevel(self.master)
+            self.info_box.overrideredirect(True)
+            self.info_box.geometry("+{}+{}".format(self.master.winfo_x(), self.master.winfo_y() + self.master.winfo_height() - 50))
 
-            # Create a frame for the error box
-            error_frame = tk.Frame(self.error_box, bg="red", bd=1, relief=tk.SOLID)
-            error_frame.pack(fill=tk.BOTH, expand=True)
+            # Create a frame for the info box
+            info_frame = tk.Frame(self.info_box, bg="red", bd=1, relief=tk.SOLID)
+            info_frame.pack(fill=tk.BOTH, expand=True)
 
-            # Create a label to display the error message
-            error_label = tk.Label(error_frame, text=error_message, fg="white", bg="red")
-            error_label.pack(side=tk.LEFT, padx=5, pady=5, fill=tk.BOTH, expand=True)
+            # Create a label to display the info message
+            info_label = tk.Label(info_frame, text=info_message, fg="white", bg="red", font=("TkDefaultFont",12,"bold"))
+            info_label.pack(side=tk.LEFT, padx=5, pady=5, fill=tk.BOTH, expand=True)
 
-            # Create a button to close the error box
-            close_button = tk.Button(error_frame, text="X", bg="red", fg="white", bd=0, command=self.remove_error_box)
+            # Create a button to close the info box
+            close_button = tk.Button(info_frame, text="X", bg="black", fg="white", bd=0, command=self.remove_info_box, font=("TkDefaultFont",12,"bold"))
             close_button.pack(side=tk.LEFT, padx=5, pady=5)
 
-    def move_error_box(self, event):
-        x, y = event.x_root, event.y_root
-        error_x, error_y = self.error_box.winfo_rootx(), self.error_box.winfo_rooty()
-        error_width, error_height = self.error_box.winfo_width(), self.error_box.winfo_height()
 
-        if error_x < x < error_x + error_width and error_y < y < error_y + error_height:
+    def move_info_box(self, event):
+        x, y = event.x_root, event.y_root
+        info_x, info_y = self.info_box.winfo_rootx(), self.info_box.winfo_rooty()
+        info_width, info_height = self.info_box.winfo_width(), self.info_box.winfo_height()
+
+        if info_x < x < info_x + info_width and info_y < y < info_y + info_height:
             return
 
-        self.error_box.geometry(f"+{x}+{y}")
+        self.info_box.geometry(f"+{x}+{y}")
 
-    def remove_error_box(self):
-        self.error_box.destroy()
-        self.error_box = None
+    def remove_info_box(self):
+        self.info_box.destroy()
+        self.info_box = None
 
 
     def fetch_close_prices_wrapper(self):
         """
         Wrapper function to fetch close prices and display them in the output Text widget.
         """
-        # try:
-        self.close_prices = fcp(self.entry_tickers, self.entry_period)
+        if self.entry_tickers is not None or self.entry_period is not None:
+            self.close_prices = fcp(self.entry_tickers, self.entry_period)
 
-        # Add a newline character before inserting the new close prices into the output Text widget
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S") # get current time in format "YYYY-MM-DD HH:MM:SS"
-        self.output.insert(tk.END, '\n' + '------------------' + now + '------------------' + '\n' + self.close_prices.to_string(index=False))
+            # Add a newline character before inserting the new close prices into the output Text widget
+            now = datetime.now().strftime("%Y-%m-%d") # get current time in format "YYYY-MM-DD HH:MM:SS"
+            self.output.insert(tk.END, '\n' + '------------------ Session Date: ' + now + '------------------' + '\n' + self.close_prices.to_string(index=False))
 
-        save_output(self.output)
-        # except Exception as e:
-        #     self.create_error_box(str(e))
+            save_output(self.output)
+        else:
+            self.create_info_box("You haven't provided tickers or a period. Check your loading file.")
 
     def save_to_csv(self):
         """
@@ -137,18 +139,15 @@ class StockClosePricesApp:
         Args:
             close_prices (pandas.DataFrame): A DataFrame containing the close prices.
         """
-        # try:
         if self.close_prices is not None:
             file_path = filedialog.asksaveasfilename(defaultextension='.csv', filetypes=[("CSV files", "*.csv"), ("All files", "*.*")])
             if file_path:
                 # Save the DataFrame to a CSV file
-                self.close_prices.to_csv(file_path, index=False)
+                self.close_prices.to_csv(file_path, date_format="%Y-%m-%d %H:%M:%S", index=False)
             else:
-                self.create_error_box("file_path not valid!")
+                self.create_info_box("file_path not valid!")
         else:
-            self.create_error_box("You have not searched for any close_prices!")
-        # except Exception as e:
-        #     self.create_error_box(str(e))
+            self.create_info_box("You have not searched for any close_prices!")
 
     def load_tickers_from_file(self):
         file_path = filedialog.askopenfilename(filetypes=[("YAML files", "*.yml"), ("All files", "*.*")])

@@ -14,5 +14,6 @@ def fetch_close_prices(tickers, period):
     """
     tickers_str = [str(tick) for tick in tickers]
     data = yf.download(tickers_str, period=period)['Close'].reset_index()
+    data['Date'] = data['Date'].dt.strftime("%Y-%m-%d")
 
     return data

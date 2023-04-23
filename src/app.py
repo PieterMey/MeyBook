@@ -89,7 +89,13 @@ class StockClosePricesApp:
 
     def move_error_box(self, event):
         x, y = event.x_root, event.y_root
-        self.error_box.geometry("+{0}+{1}".format(x, y))
+        error_x, error_y = self.error_box.winfo_rootx(), self.error_box.winfo_rooty()
+        error_width, error_height = self.error_box.winfo_width(), self.error_box.winfo_height()
+
+        if error_x < x < error_x + error_width and error_y < y < error_y + error_height:
+            return
+
+        self.error_box.geometry(f"+{x}+{y}")
 
     def remove_error_box(self):
         self.error_box.destroy()
@@ -100,20 +106,19 @@ class StockClosePricesApp:
         """
         Wrapper function to fetch close prices and display them in the output Text widget.
         """
-        # try:
-        tickers = [ticker.upper().strip() for ticker in self.entry_tickers.get().split(',')]
-        period = self.entry_period.get()
-        close_prices = fcp(tickers, period)
+        try:
+            tickers = [ticker.upper().strip() for ticker in self.entry_tickers.get().split(',')]
+            period = self.entry_period.get()
+            close_prices = fcp(tickers, period)
 
-        # Add a newline character before inserting the new close prices into the output Text widget
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S") # get current time in format "YYYY-MM-DD HH:MM:SS"
-        self.output.insert(tk.END, '\n' + '------------------' + now + '------------------' + '\n' + close_prices.to_string(index=False))
+            # Add a newline character before inserting the new close prices into the output Text widget
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S") # get current time in format "YYYY-MM-DD HH:MM:SS"
+            self.output.insert(tk.END, '\n' + '------------------' + now + '------------------' + '\n' + close_prices.to_string(index=False))
+            self.df_close_prices = close_prices
 
-        self.df_close_prices = close_prices
-
-        save_output(self.output)
-        # except Exception as e:
-        #     self.create_error_box(str(e))
+            save_output(self.output)
+        except Exception as e:
+            self.create_error_box(str(e))
 
     def save_to_csv(self):
         """

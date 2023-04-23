@@ -18,6 +18,6 @@ def fetch_close_prices(tickers, period):
     with open('config.yaml', 'w') as file:
         yaml.dump(config, file)
 
-    data = yf.download(tickers, period='1d')['Close'].reset_index()
+    data = yf.download(tickers, period=period)['Close'].reset_index()
 
     return data

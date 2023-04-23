@@ -3,7 +3,7 @@ import yfinance as yf
 from tkinter import filedialog
 from datetime import datetime
 import yaml
-print(yf.__version__)
+import os
 
 from custom_entry import CustomEntry
 from fetch_close_prices import fetch_close_prices as fcp
@@ -20,6 +20,7 @@ class StockClosePricesApp:
         self.create_buttons_widgets()
         self.create_output_widgets()
         self.create_ticker_list_widget()
+        self.configure_app_sizes()
 
         # Initialize the global variable for error message
         self.error_box=None
@@ -29,6 +30,13 @@ class StockClosePricesApp:
 
         # Load previous output
         load_output(self.output)
+        self.load_window_settings()
+
+        # Set up window close callback
+        master.protocol("WM_DELETE_WINDOW", self.save_window_settings)
+
+        # Bind the window "<Configure>" event
+        self.master.bind("<Configure>", self.on_window_configure)
 
     def create_ticker_list_widget(self):
         self.ticker_list_label = tk.Label(self.master, text="", anchor="w")
@@ -55,16 +63,21 @@ class StockClosePricesApp:
     def create_output_widgets(self):
         # Create and set up the output Text widget and its scrollbar
         output_frame = tk.Frame(self.master)
-        output_frame.grid(row=3, column=0, columnspan=2, sticky=tk.N+tk.S+tk.E+tk.W)
+        output_frame.grid(row=3, rowspan=2, column=0, columnspan=2, sticky=tk.N+tk.S+tk.E+tk.W)
         self.output = tk.Text(output_frame, wrap=tk.WORD)
         scrollbar = tk.Scrollbar(output_frame, command=self.output.yview)
         self.output.config(yscrollcommand=scrollbar.set)
         self.output.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
+    def configure_app_sizes(self):
         # Configure row and column weights for the app grid
-        for i in range(4):
-            self.master.grid_rowconfigure(i, weight=1)
+        self.master.grid_rowconfigure(0, weight=0)
+        self.master.grid_rowconfigure(1, weight=0)
+        self.master.grid_rowconfigure(2, weight=1)
+        self.master.grid_rowconfigure(3, weight=2)
+        self.master.grid_rowconfigure(4, weight=3)
+        self.master.grid_columnconfigure(0, weight=1)
         self.master.grid_columnconfigure(1, weight=1)
     
     def create_error_box(self, error_message):
@@ -145,5 +158,38 @@ class StockClosePricesApp:
             self.entry_tickers = data["tickers"]
             self.entry_period = data["period"][0]
             self.ticker_list_label.config(text="Tickers: "+''.join(["\n"+ ticker for ticker in self.entry_tickers]))
+
+    def save_window_settings(self):
+        """Save the current size and position of the app to a file."""
+        window_settings = {
+            "x": self.master.winfo_x(),
+            "y": self.master.winfo_y(),
+            "width": self.master.winfo_width(),
+            "height": self.master.winfo_height(),
+        }
+        with open("window_settings.yml", "w") as f:
+            yaml.dump(window_settings, f)
+
+        # Close the app
+        self.master.destroy()
+
+    def load_window_settings(self):
+        """Load the saved size and position of the app and apply them."""
+        window_settings_file = "window_settings.yml"
+        if os.path.exists(window_settings_file):
+            with open(window_settings_file, "r") as f:
+                window_settings = yaml.load(f, Loader=yaml.FullLoader)
+            self.master.geometry("{}x{}+{}+{}".format(window_settings["width"], window_settings["height"], window_settings["x"], window_settings["y"]))
+    
+    def on_window_configure(self, event):
+        """Handle window configuration events (e.g. resize, maximize)"""
+        # Check if the window is maximized
+        is_maximized = self.master.attributes('-fullscreen')
+        if is_maximized:
+            # If the window is maximized, set its minimum size to its current size
+            self.master.minsize(event.width, event.height)
+        else:
+            # If the window is not maximized, reset its minimum size to (1, 1)
+            self.master.minsize(1, 1)
 
 

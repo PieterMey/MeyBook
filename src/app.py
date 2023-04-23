@@ -1,6 +1,9 @@
 import tkinter as tk
+import yfinance as yf
 from tkinter import filedialog
 from datetime import datetime
+import yaml
+print(yf.__version__)
 
 from custom_entry import CustomEntry
 from fetch_close_prices import fetch_close_prices as fcp
@@ -16,28 +19,25 @@ class StockClosePricesApp:
         self.create_inputs_widgets()
         self.create_buttons_widgets()
         self.create_output_widgets()
+        self.create_ticker_list_widget()
 
         # Initialize the global variable for error message
         self.error_box=None
 
         # Initialize the global variable for storing close prices data
-        self.df_close_prices = None
+        self.close_prices = None
 
         # Load previous output
         load_output(self.output)
 
-    def create_inputs_widgets(self):
-        # Create and set up the Ticker input field
-        tk.Label(self.master, text="Tickers (comma separated):").grid(row=0, column=0, sticky=tk.W)
-        tickers_var = tk.StringVar()
-        self.entry_tickers = CustomEntry(self.master, textvariable=tickers_var, placeholder="e.g. AAPL, GOOGL, MSFT")
-        self.entry_tickers.grid(row=0, column=1)
+    def create_ticker_list_widget(self):
+        self.ticker_list_label = tk.Label(self.master, text="", anchor="w")
+        self.ticker_list_label.grid(row=3, column=2, sticky="nsew")
 
-        # Create and set up the Period input field
-        tk.Label(self.master, text="Period:").grid(row=1, column=0, sticky=tk.W)
-        period_var = tk.StringVar()
-        self.entry_period = CustomEntry(self.master, textvariable=period_var, placeholder="e.g. 1d, 5d, 1mo, 1yr")
-        self.entry_period.grid(row=1, column=1)
+    def create_inputs_widgets(self):
+        # Create and set up the Load Tickers from File button
+        load_file_button = tk.Button(self.master, text="Load Tickers from File", command=self.load_tickers_from_file)
+        load_file_button.grid(row=0, column=0)
 
     def create_buttons_widgets(self):
         # Create and set up the Fetch button
@@ -106,29 +106,44 @@ class StockClosePricesApp:
         """
         Wrapper function to fetch close prices and display them in the output Text widget.
         """
-        try:
-            tickers = [ticker.upper().strip() for ticker in self.entry_tickers.get().split(',')]
-            period = self.entry_period.get()
-            close_prices = fcp(tickers, period)
+        # try:
+        self.close_prices = fcp(self.entry_tickers, self.entry_period)
 
-            # Add a newline character before inserting the new close prices into the output Text widget
-            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S") # get current time in format "YYYY-MM-DD HH:MM:SS"
-            self.output.insert(tk.END, '\n' + '------------------' + now + '------------------' + '\n' + close_prices.to_string(index=False))
-            self.df_close_prices = close_prices
+        # Add a newline character before inserting the new close prices into the output Text widget
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S") # get current time in format "YYYY-MM-DD HH:MM:SS"
+        self.output.insert(tk.END, '\n' + '------------------' + now + '------------------' + '\n' + self.close_prices.to_string(index=False))
 
-            save_output(self.output)
-        except Exception as e:
-            self.create_error_box(str(e))
+        save_output(self.output)
+        # except Exception as e:
+        #     self.create_error_box(str(e))
 
     def save_to_csv(self):
         """
         Save the DataFrame containing close prices to a CSV file.
 
         Args:
-            df_close_prices (pandas.DataFrame): A DataFrame containing the close prices.
+            close_prices (pandas.DataFrame): A DataFrame containing the close prices.
         """
-        if self.df_close_prices is not None:
+        # try:
+        if self.close_prices is not None:
             file_path = filedialog.asksaveasfilename(defaultextension='.csv', filetypes=[("CSV files", "*.csv"), ("All files", "*.*")])
             if file_path:
                 # Save the DataFrame to a CSV file
-                self.df_close_prices.to_csv(file_path, index=False)
+                self.close_prices.to_csv(file_path, index=False)
+            else:
+                self.create_error_box("file_path not valid!")
+        else:
+            self.create_error_box("You have not searched for any close_prices!")
+        # except Exception as e:
+        #     self.create_error_box(str(e))
+
+    def load_tickers_from_file(self):
+        file_path = filedialog.askopenfilename(filetypes=[("YAML files", "*.yml"), ("All files", "*.*")])
+        if file_path:
+            with open(file_path, "r") as f:
+                data = yaml.load(f, Loader=yaml.FullLoader)
+            self.entry_tickers = data["tickers"]
+            self.entry_period = data["period"][0]
+            self.ticker_list_label.config(text="Tickers: "+''.join(["\n"+ ticker for ticker in self.entry_tickers]))
+
+

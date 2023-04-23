@@ -1,4 +1,3 @@
-import yaml
 import yfinance as yf
 import pandas as pd
 
@@ -13,11 +12,7 @@ def fetch_close_prices(tickers, period):
     Returns:
         pandas.DataFrame: A DataFrame containing the close prices.
     """
-    config = {'tickers': tickers, 'period': period}
-
-    with open('config.yaml', 'w') as file:
-        yaml.dump(config, file)
-
-    data = yf.download(tickers, period=period)['Close'].reset_index()
+    tickers_str = [str(tick) for tick in tickers]
+    data = yf.download(tickers_str, period=period)['Close'].reset_index()
 
     return data
